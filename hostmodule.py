@@ -26,10 +26,20 @@ for i in range(nx):
       tmx  = tmx.astype(np.int)
       rtmp = tabs[0,:,0]
 #------------------------------------------------------------------
-
-def richmass(rich):
-
-  return 0
+pi = np.pi
+sfc= np.sqrt(2.0*pi)
+def richmass(rich,zl,Roff,Rp,npoints):
+  lgM_mean = 1.31*np.log10(float(rich)/30.0)+13.89
+  Mrange   = np.linspace(10.0,20.0,npoints)
+  sig      = 0.19
+  Pmn      = (1.0/sfc/sig)*np.exp(-0.5*((Mrange-lgM_mean)**2.0/(sig*sig)))
+  offcen   = np.zeros(len(Rp))
+  Pcen     = 0.68
+  for i in range(npoints):
+     amp,rs,r200 = halos.haloparams(Mrange[i],0,zl)
+     offcen  = offcen+(0.68*offcenter(amp,rs,Roff,Rp,0.046)+\
+               0.32*offcenter(amp,rs,Roff,Rp,0.26))*Pmn[i]
+  return offcen
 
 def offcenter(amp,rs,Roff,Rp,sigr):
   nrp     = 300
@@ -48,16 +58,28 @@ def offcenter(amp,rs,Roff,Rp,sigr):
 
       idx     = np.abs(rc2-rr)==np.min(np.abs(rc2-rr))
       inx     = int(xx[idx])
-      tmp     = float(inx)*amp*tabs[inx,:,1]*(rc2[inx]-rc1[inx])/rc2[inx]
-      summ    = summ+(protb[i]/totprb)*float(1.0/npi)*tmp
+      tmp     = float(inx)*tabs[inx,:,1]*(rc2[inx]-rc1[inx])/rc2[inx]
+      summ    = summ+(protb[i]/totprb)*float(1.0/npi)*tmp*amp
   res     = np.interp(Rp,rs*rtmp,summ)
   return res
  
 def hostRsep(Roff,rich,Pm,zl,Rp):
+  zlunq   = np.unique(zl)
+  ncl     = len(zlunq) 
   hostsub = 0
   Pcen    = 0.68
-
-  #fo
-  #amp,rs,r200 = haloparams(logMh,hostsub,zl)
-
-  return 0 
+  sumtotal= np.zeros(len(Rp))
+  for icl in range(ncl):
+     idx    = zl==zlunq[icl]
+     rhns   = rich[icl]
+     nsat   = len(zl[idx]) 
+     sumsat = np.zeros(len(Rp))
+     for ist in range(nsat):
+	npoints = 5
+        esdsat  = richmass(rhns,zlunq[icl],Roff[ist],Rp,npoints)
+        sumsat  = Pm[ist]*esdsat
+        
+     avesumsat = sumsat/rhns
+     sumtotal  = sumtotal+avesumsat
+  esdtotal = sumtotal/float(ncl)
+  return esdtotal 
